@@ -30,7 +30,7 @@ class SoftTargetCrossEntropy(nn.Module):
     def forward(self, x, target):
         N_rep = x.shape[0]
         N = target.shape[0]
-        if not N == N_rep:
+        if N != N_rep:
             target = target.repeat(N_rep // N, 1)
         loss = torch.sum(-target * F.log_softmax(x, dim=-1), dim=-1)
         return loss.mean()
@@ -101,7 +101,7 @@ class TokenLabelSoftTargetCrossEntropy(nn.Module):
     def forward(self, x, target):
         N_rep = x.shape[0]
         N = target.shape[0]
-        if not N == N_rep:
+        if N != N_rep:
             target = target.repeat(N_rep // N, 1)
         if len(target.shape) == 3 and target.shape[-1] == 2:
             target = target[:, :, 1]

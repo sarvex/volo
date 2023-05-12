@@ -46,8 +46,7 @@ def resize_pos_embed(posemb, posemb_new):
     posemb_grid = F.interpolate(
         posemb_grid, size=(gs_new, gs_new),
         mode='bicubic')  # [1, dim, 14, 14] -> [1, dim, 24, 24]
-    posemb_grid = posemb_grid.permute(0, 2, 3, 1).reshape(
-        1, gs_new * gs_new, -1)  # [1, dim, 24, 24] -> [1, 24*24, dim]
+    posemb_grid = posemb_grid.permute(0, 2, 3, 1).reshape(1, gs_new**2, -1)
     posemb = torch.cat([posemb_tok, posemb_grid], dim=1)  # [1, 24*24+1, dim]
     return posemb
 
@@ -68,8 +67,7 @@ def resize_pos_embed_without_cls(posemb, posemb_new):
     posemb_grid = F.interpolate(
         posemb_grid, size=(gs_new, gs_new),
         mode='bicubic')  # [1, dim, 14, 14] -> [1, dim, 24, 24]
-    posemb_grid = posemb_grid.permute(0, 2, 3, 1).reshape(
-        1, gs_new * gs_new, -1)  # [1, dim, 24, 24] -> [1, 24*24, dim]
+    posemb_grid = posemb_grid.permute(0, 2, 3, 1).reshape(1, gs_new**2, -1)
     return posemb_grid
 
 
@@ -92,9 +90,12 @@ def load_state_dict(checkpoint_path, model, use_ema=False, num_classes=1000):
     if checkpoint_path and os.path.isfile(checkpoint_path):
         checkpoint = torch.load(checkpoint_path, map_location='cpu')
         state_dict_key = 'state_dict'
-        if isinstance(checkpoint, dict):
-            if use_ema and 'state_dict_ema' in checkpoint:
-                state_dict_key = 'state_dict_ema'
+        if (
+            isinstance(checkpoint, dict)
+            and use_ema
+            and 'state_dict_ema' in checkpoint
+        ):
+            state_dict_key = 'state_dict_ema'
         if state_dict_key and state_dict_key in checkpoint:
             new_state_dict = OrderedDict()
             for k, v in checkpoint[state_dict_key].items():
@@ -104,8 +105,7 @@ def load_state_dict(checkpoint_path, model, use_ema=False, num_classes=1000):
             state_dict = new_state_dict
         else:
             state_dict = checkpoint
-        _logger.info("Loaded {} from checkpoint '{}'".format(
-            state_dict_key, checkpoint_path))
+        _logger.info(f"Loaded {state_dict_key} from checkpoint '{checkpoint_path}'")
         if num_classes != 1000:
             # completely discard fully connected for all other differences between pretrained and created model
             del state_dict['head' + '.weight']
@@ -128,7 +128,7 @@ def load_state_dict(checkpoint_path, model, use_ema=False, num_classes=1000):
 
         return state_dict
     else:
-        _logger.error("No checkpoint found at '{}'".format(checkpoint_path))
+        _logger.error(f"No checkpoint found at '{checkpoint_path}'")
         raise FileNotFoundError()
 
 

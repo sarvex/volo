@@ -232,11 +232,9 @@ class ClassAttention(nn.Module):
                  qk_scale=None, attn_drop=0., proj_drop=0.):
         super().__init__()
         self.num_heads = num_heads
-        if head_dim is not None:
-            self.head_dim = head_dim
-        else:
+        if head_dim is None:
             head_dim = dim // num_heads
-            self.head_dim = head_dim
+        self.head_dim = head_dim
         self.scale = qk_scale or head_dim**-0.5
 
         self.kv = nn.Linear(dim,
@@ -401,9 +399,7 @@ def outlooker_blocks(block_fn, index, dim, layers, num_heads=1, kernel_size=3,
                                qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop,
                                drop_path=block_dpr))
 
-    blocks = nn.Sequential(*blocks)
-
-    return blocks
+    return nn.Sequential(*blocks)
 
 
 def transformer_blocks(block_fn, index, dim, layers, num_heads, mlp_ratio=3.,
@@ -425,9 +421,7 @@ def transformer_blocks(block_fn, index, dim, layers, num_heads, mlp_ratio=3.,
                      attn_drop=attn_drop,
                      drop_path=block_dpr))
 
-    blocks = nn.Sequential(*blocks)
-
-    return blocks
+    return nn.Sequential(*blocks)
 
 
 class VOLO(nn.Module):
@@ -487,7 +481,6 @@ class VOLO(nn.Module):
                                          padding=out_padding, mlp_ratio=mlp_ratios[i],
                                          qkv_bias=qkv_bias, qk_scale=qk_scale,
                                          attn_drop=attn_drop_rate, norm_layer=norm_layer)
-                network.append(stage)
             else:
                 # stage 2
                 stage = transformer_blocks(Transformer, i, embed_dims[i], layers,
@@ -496,8 +489,7 @@ class VOLO(nn.Module):
                                            drop_path_rate=drop_path_rate,
                                            attn_drop=attn_drop_rate,
                                            norm_layer=norm_layer)
-                network.append(stage)
-
+            network.append(stage)
             if downsamples[i]:
                 # downsampling between two stages
                 network.append(Downsample(embed_dims[i], embed_dims[i + 1], 2))
@@ -604,7 +596,7 @@ class VOLO(nn.Module):
             bbx1, bby1, bbx2, bby2 = rand_bbox(x.size(), lam, scale=self.pooling_scale)
             temp_x = x.clone()
             sbbx1,sbby1,sbbx2,sbby2=self.pooling_scale*bbx1,self.pooling_scale*bby1,\
-                                    self.pooling_scale*bbx2,self.pooling_scale*bby2
+                                        self.pooling_scale*bbx2,self.pooling_scale*bby2
             temp_x[:, sbbx1:sbbx2, sbby1:sbby2, :] = x.flip(0)[:, sbbx1:sbbx2, sbby1:sbby2, :]
             x = temp_x
         else:
@@ -632,7 +624,7 @@ class VOLO(nn.Module):
         if not self.training:
             return x_cls + 0.5 * x_aux.max(1)[0]
 
-        if self.mix_token and self.training:  # reverse "mix token", see token labeling for details.
+        if self.mix_token:  # reverse "mix token", see token labeling for details.
             x_aux = x_aux.reshape(x_aux.shape[0], patch_h, patch_w, x_aux.shape[-1])
 
             temp_x = x_aux.clone()
